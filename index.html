@@ -105,10 +105,13 @@
       }
 
       /* Placeholder only — no agent behavior yet */
-      .chatbot-fab {
+      .chatbot {
         position: fixed;
         right: 1.25rem;
         bottom: 1.25rem;
+      }
+
+      .chatbot-fab {
         width: 3.5rem;
         height: 3.5rem;
         border: none;
@@ -127,12 +130,40 @@
         height: 1.5rem;
       }
 
+      .chatbot-nudge {
+        position: absolute;
+        right: calc(100% + 0.65rem);
+        bottom: calc(100% - 0.35rem);
+        width: max-content;
+        max-width: min(22rem, calc(100vw - 6rem));
+        padding: 0.55rem 0.9rem;
+        border-radius: 12px 12px 2px 12px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 0.9rem;
+        line-height: 1.3;
+        white-space: nowrap;
+        box-shadow: 0 6px 20px rgba(26, 46, 42, 0.12);
+        border: 1px solid var(--line);
+        opacity: 0;
+        transform: translateY(4px);
+        pointer-events: none;
+        visibility: hidden;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+      }
+
+      .chatbot-nudge.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+        visibility: visible;
+      }
+
       @media (min-width: 768px) {
         .screen {
           padding: 2.5rem 1.5rem 5.5rem;
         }
 
-        .chatbot-fab {
+        .chatbot {
           right: 2rem;
           bottom: 2rem;
         }
@@ -153,23 +184,64 @@
       ></textarea>
     </main>
 
-    <div
-      class="chatbot-fab"
-      role="img"
-      aria-label="AI writing assistant (coming soon)"
-      title="AI assistant coming soon"
-    >
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path
-          d="M4 12a8 8 0 0 1 8-8h0a8 8 0 0 1 8 8v1.2a2.8 2.8 0 0 1-2.8 2.8H12l-4.2 3.2V16H9.2A5.2 5.2 0 0 1 4 10.8V12Z"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linejoin="round"
-        />
-        <circle cx="9.25" cy="11.25" r="1" fill="currentColor" />
-        <circle cx="12" cy="11.25" r="1" fill="currentColor" />
-        <circle cx="14.75" cy="11.25" r="1" fill="currentColor" />
-      </svg>
+    <div class="chatbot">
+      <div
+        id="chatbot-nudge"
+        class="chatbot-nudge"
+        role="status"
+        aria-live="polite"
+        hidden
+      >
+        Stuck on what to write?
+      </div>
+      <div
+        class="chatbot-fab"
+        role="img"
+        aria-label="AI writing assistant (coming soon)"
+        title="AI assistant coming soon"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M4 12a8 8 0 0 1 8-8h0a8 8 0 0 1 8 8v1.2a2.8 2.8 0 0 1-2.8 2.8H12l-4.2 3.2V16H9.2A5.2 5.2 0 0 1 4 10.8V12Z"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linejoin="round"
+          />
+          <circle cx="9.25" cy="11.25" r="1" fill="currentColor" />
+          <circle cx="12" cy="11.25" r="1" fill="currentColor" />
+          <circle cx="14.75" cy="11.25" r="1" fill="currentColor" />
+        </svg>
+      </div>
     </div>
+
+    <script>
+      (function () {
+        var IDLE_MS = 30000;
+        var post = document.getElementById("post");
+        var nudge = document.getElementById("chatbot-nudge");
+        var timer = null;
+
+        function hideNudge() {
+          nudge.classList.remove("is-visible");
+          nudge.hidden = true;
+        }
+
+        function showNudge() {
+          nudge.hidden = false;
+          // Force reflow so the transition still runs after removing hidden
+          void nudge.offsetWidth;
+          nudge.classList.add("is-visible");
+        }
+
+        function resetIdleTimer() {
+          hideNudge();
+          clearTimeout(timer);
+          timer = setTimeout(showNudge, IDLE_MS);
+        }
+
+        post.addEventListener("input", resetIdleTimer);
+        resetIdleTimer();
+      })();
+    </script>
   </body>
 </html>
