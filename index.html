@@ -50,7 +50,11 @@
         height: 100dvh;
         overflow: hidden;
         overflow: clip;
-        /* Horizontal touch moves drive the pager; vertical still scrolls. */
+      }
+
+      /* Mobile only: horizontal touch moves drive the pager; vertical still
+         scrolls. */
+      html.mobile .pager {
         touch-action: pan-y;
       }
 
@@ -603,6 +607,16 @@
 
     <script>
       (function () {
+        // Swiping between pages and swipe-to-accept are for phones and
+        // tablets only; desktop browsers (even with a touchscreen) keep the
+        // button and Tab. iPadOS reports itself as a Mac, so check for touch.
+        var ua = navigator.userAgent;
+        var IS_MOBILE =
+          (navigator.userAgentData && navigator.userAgentData.mobile) ||
+          /Android|iPhone|iPad|iPod|Mobile/i.test(ua) ||
+          (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+        document.documentElement.classList.toggle("mobile", IS_MOBILE);
+
         // Local uvicorn: same-origin. GitHub Pages: Cloud Run proxy (POST
         // /api/chat is not available on static Pages — that caused HTTP 405).
         // Override anytime with ?api=https://... (persisted in localStorage).
@@ -810,7 +824,7 @@
           "touchstart",
           function (e) {
             drag = null;
-            if (e.touches.length !== 1) return;
+            if (!IS_MOBILE || e.touches.length !== 1) return;
             var p = dragPoint(e);
             drag = {
               open: isChatOpen(),
@@ -1007,7 +1021,7 @@
         var completeSeq = 0;
         var completeSessionId = null; // kept apart from the chat session
         // Phones/tablets have no Tab key: swipe right to accept instead.
-        var TOUCH = window.matchMedia("(pointer: coarse)").matches;
+        var TOUCH = IS_MOBILE;
         if (TOUCH) {
           document.querySelector("#post-hint .hint-keys").textContent =
             "Swipe right to accept it.";
