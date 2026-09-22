@@ -43,6 +43,10 @@
         --on-accent: #ffffff;
         --sage-soft: #e3ebe2;
         --ghost: #7d6e76;
+        --bubble-1: #f6e6ec;
+        --bubble-2: #e3ebe2;
+        --bubble-3: #fbe8d8;
+        --bubble-4: #ece6f4;
         --glow: rgba(150, 56, 98, 0.16);
         --shadow: 0 1px 2px rgba(70, 45, 55, 0.04), 0 8px 28px rgba(70, 45, 55, 0.07);
         --shadow-lift: 0 2px 4px rgba(70, 45, 55, 0.05), 0 16px 40px rgba(70, 45, 55, 0.12);
@@ -69,6 +73,10 @@
           --on-accent: #1f1c26;
           --sage-soft: #2c3330;
           --ghost: #948895;
+          --bubble-1: #3a2a36;
+          --bubble-2: #2c3330;
+          --bubble-3: #3a2f28;
+          --bubble-4: #302a3a;
           --glow: rgba(217, 154, 182, 0.22);
           --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 28px rgba(0, 0, 0, 0.28);
           --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.25), 0 16px 40px rgba(0, 0, 0, 0.4);
@@ -196,7 +204,8 @@
 
       /* ---- Journal prompts (empty editor only) ---- */
       .prompts {
-        margin: 0 0 1rem;
+        margin: 0 0 1.5rem;
+        text-align: center;
       }
 
       .prompts[hidden] {
@@ -204,15 +213,23 @@
       }
 
       .prompts-label {
-        margin: 0 0 0.5rem;
+        margin: 0 0 0.85rem;
         font-size: 0.85rem;
         color: var(--muted);
       }
 
+      /* Two by two on phones, one row of four when there's room. */
       .prompts-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        display: grid;
+        grid-template-columns: repeat(2, auto);
+        justify-content: center;
+        gap: 0.9rem 1.1rem;
+      }
+
+      @media (min-width: 560px) {
+        .prompts-list {
+          grid-template-columns: repeat(4, auto);
+        }
       }
 
       .prompt-chip,
@@ -252,6 +269,63 @@
       .chatbot-fab:focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: 2px;
+      }
+
+      /* Prompts are soft floating bubbles, each its own tint, drifting
+         slightly out of step with one another. */
+      .prompt-chip {
+        display: grid;
+        place-items: center;
+        width: clamp(6.5rem, 22vw, 7.75rem);
+        aspect-ratio: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 50%;
+        background: var(--bubble-1);
+        color: var(--ink);
+        font-size: 0.85rem;
+        line-height: 1.25;
+        text-align: center;
+        box-shadow: var(--shadow);
+        animation: float 6s ease-in-out infinite;
+        transition:
+          transform 0.4s var(--ease),
+          box-shadow 0.4s var(--ease);
+      }
+
+      .prompt-chip:nth-child(2) {
+        background: var(--bubble-2);
+        animation-duration: 7s;
+        animation-delay: -2s;
+      }
+
+      .prompt-chip:nth-child(3) {
+        background: var(--bubble-3);
+        animation-duration: 6.5s;
+        animation-delay: -4s;
+      }
+
+      .prompt-chip:nth-child(4) {
+        background: var(--bubble-4);
+        animation-duration: 7.5s;
+        animation-delay: -1s;
+      }
+
+      @keyframes float {
+        50% {
+          translate: 0 -6px;
+        }
+      }
+
+      /* translate (float) and transform (hover) are separate properties,
+         so the hover lift adds to the drift instead of fighting it. */
+      .prompt-chip:hover {
+        transform: scale(1.06);
+        box-shadow: var(--shadow-lift);
+      }
+
+      .prompt-chip:active {
+        transform: scale(0.97);
       }
 
       /* ---- Editor: a sheet of journal paper ---- */
@@ -879,7 +953,7 @@
                     What would help right now?
                   </button>
                   <button type="button" class="prompt-chip" data-start="I'm grateful for ">
-                    Something you're grateful for
+                    What you're grateful for
                   </button>
                 </div>
               </div>
