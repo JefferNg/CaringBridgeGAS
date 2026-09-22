@@ -454,8 +454,20 @@
 
     <script>
       (function () {
-        // Backend uses ADC + project/location/agent id (see server.py).
-        var API_CHAT = "/api/chat";
+        // Same-origin for local uvicorn; override for GitHub Pages via
+        // ?api=https://your-backend.example (persisted in localStorage).
+        var params = new URLSearchParams(window.location.search);
+        var apiBase = window.localStorage.getItem("caringbridge_api_base") || "";
+        if (params.has("api")) {
+          apiBase = params.get("api") || "";
+          if (apiBase) {
+            window.localStorage.setItem("caringbridge_api_base", apiBase);
+          } else {
+            window.localStorage.removeItem("caringbridge_api_base");
+          }
+        }
+        var API_CHAT =
+          (apiBase ? apiBase.replace(/\/$/, "") : "") + "/api/chat";
 
         var IDLE_MS = 30000;
         var post = document.getElementById("post");
