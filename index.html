@@ -697,16 +697,21 @@
         padding: 0.8rem 0.85rem;
       }
 
+      /* Grows with what's typed (see fitInput); 16px text so iOS doesn't
+         zoom the page when the box is focused. */
       #chat-input {
         flex: 1;
+        min-width: 0;
         border: 1px solid var(--line);
         border-radius: 14px;
-        padding: 0.7rem 0.9rem;
+        padding: 0.65rem 0.9rem;
         font: inherit;
-        font-size: 0.95rem;
+        font-size: 1rem;
+        line-height: 1.4;
         resize: none;
-        min-height: 2.6rem;
-        max-height: 7rem;
+        min-height: 2.75rem;
+        max-height: 8rem;
+        overflow-y: auto;
         outline: none;
         background: var(--bg);
         color: var(--ink);
@@ -715,6 +720,9 @@
 
       #chat-input::placeholder {
         color: var(--ghost);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       #chat-input:focus {
@@ -1004,7 +1012,7 @@
                   <textarea
                     id="chat-input"
                     rows="1"
-                    placeholder="Ask for help with your post…"
+                    placeholder="Ask for help…"
                   ></textarea>
                   <button type="submit" class="chat-send" id="chat-send">Send</button>
                 </form>
@@ -1522,6 +1530,7 @@
           clearSuggestions();
           addBubble("user", userText);
           input.value = "";
+          fitInput();
           var pending = addBubble("assistant", "Thinking…", "pending");
 
           try {
@@ -1553,6 +1562,14 @@
           e.preventDefault();
           handleSend(input.value.trim());
         });
+
+        // Grow the message box with its text, up to its CSS max-height.
+        function fitInput() {
+          input.style.height = "auto";
+          input.style.height = input.scrollHeight + 2 + "px"; // + borders
+        }
+
+        input.addEventListener("input", fitInput);
 
         input.addEventListener("keydown", function (e) {
           if (e.key === "Enter" && !e.shiftKey) {
