@@ -3,11 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fbf7f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1f1c26" media="(prefers-color-scheme: dark)" />
     <title>CaringBridge — Write a post</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;1,7..72,400&display=swap"
       rel="stylesheet"
     />
     <script>
@@ -24,15 +26,53 @@
       })();
     </script>
     <style>
+      /* Warm journal palette built on CaringBridge's own plum and slate
+         navy; every text pair here meets WCAG AA contrast. */
       :root {
-        --ink: #1a2e2a;
-        --muted: #4a635c;
-        --paper: #f7faf8;
-        --line: #c5d5ce;
-        --accent: #0d6e5f;
-        --accent-soft: #d8efe9;
-        --glow: rgba(13, 110, 95, 0.18);
-        --panel: rgba(255, 255, 255, 0.86);
+        color-scheme: light;
+        --bg: #fbf7f2;
+        --bg-blush: #f6e6ec;
+        --bg-sage: #e6ede4;
+        --surface: #fffdf9;
+        --ink: #24384c;
+        --muted: #5e6b78;
+        --line: #ece2d9;
+        --accent: #963862;
+        --accent-hover: #843156;
+        --accent-soft: #f6e6ec;
+        --on-accent: #ffffff;
+        --sage-soft: #e3ebe2;
+        --ghost: #7d6e76;
+        --glow: rgba(150, 56, 98, 0.16);
+        --shadow: 0 1px 2px rgba(70, 45, 55, 0.04), 0 8px 28px rgba(70, 45, 55, 0.07);
+        --shadow-lift: 0 2px 4px rgba(70, 45, 55, 0.05), 0 16px 40px rgba(70, 45, 55, 0.12);
+        --radius: 16px;
+        --ease: cubic-bezier(0.33, 1, 0.68, 1);
+        --serif: "Literata", Georgia, serif;
+        --sans: "Figtree", system-ui, sans-serif;
+      }
+
+      /* Warm plum-charcoal for late nights, never pure black. */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --bg: #1f1c26;
+          --bg-blush: #2e2330;
+          --bg-sage: #232a28;
+          --surface: #27232f;
+          --ink: #f3ece6;
+          --muted: #b9adb4;
+          --line: #3a3442;
+          --accent: #d99ab6;
+          --accent-hover: #e6b1c8;
+          --accent-soft: #3a2a36;
+          --on-accent: #1f1c26;
+          --sage-soft: #2c3330;
+          --ghost: #948895;
+          --glow: rgba(217, 154, 182, 0.22);
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 28px rgba(0, 0, 0, 0.28);
+          --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.25), 0 16px 40px rgba(0, 0, 0, 0.4);
+        }
       }
 
       * {
@@ -47,12 +87,18 @@
 
       body {
         overflow: hidden;
-        font-family: "Source Sans 3", sans-serif;
+        font-family: var(--sans);
         color: var(--ink);
-        background:
-          radial-gradient(ellipse 80% 50% at 10% 0%, #e4f3ee 0%, transparent 55%),
-          radial-gradient(ellipse 60% 40% at 100% 100%, #e8f0f5 0%, transparent 50%),
-          linear-gradient(165deg, #eef5f2 0%, var(--paper) 45%, #eef2f6 100%);
+        background-color: var(--bg);
+        background-image:
+          radial-gradient(ellipse 70% 45% at 0% 0%, var(--bg-blush) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 40% at 100% 100%, var(--bg-sage) 0%, transparent 60%);
+        background-attachment: fixed;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button {
+        -webkit-tap-highlight-color: transparent;
       }
 
       /* Two side-by-side pages (post, chat); opening the chat slides the
@@ -74,7 +120,7 @@
       .pager-track {
         display: flex;
         height: 100%;
-        transition: transform 0.38s cubic-bezier(0.22, 0.8, 0.24, 1);
+        transition: transform 0.45s var(--ease);
       }
 
       /* Finger-driven: the track tracks the touch with no easing. */
@@ -84,12 +130,6 @@
 
       body.chat-open .pager-track {
         transform: translateX(-100%);
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .pager-track {
-          transition: none;
-        }
       }
 
       .page {
@@ -105,7 +145,7 @@
         min-height: 100%;
         max-width: 720px;
         margin: 0 auto;
-        padding: 1.5rem 1.25rem 5.5rem;
+        padding: 1.75rem 1.25rem 5.5rem;
       }
 
       .chat-screen {
@@ -118,19 +158,21 @@
       }
 
       .brand {
-        font-family: "Fraunces", serif;
-        font-weight: 650;
-        font-size: clamp(1.75rem, 4vw, 2.25rem);
-        letter-spacing: -0.02em;
-        margin: 0 0 0.35rem;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: clamp(1.6rem, 4vw, 2rem);
+        letter-spacing: -0.015em;
+        margin: 0 0 0.3rem;
         color: var(--accent);
       }
 
       .lede {
         margin: 0 0 1.5rem;
+        font-family: var(--serif);
+        font-style: italic;
         color: var(--muted);
-        font-size: 1.05rem;
-        line-height: 1.45;
+        font-size: 1.1rem;
+        line-height: 1.5;
       }
 
       .editor {
@@ -152,24 +194,102 @@
         border: 0;
       }
 
+      /* ---- Journal prompts (empty editor only) ---- */
+      .prompts {
+        margin: 0 0 1rem;
+      }
+
+      .prompts[hidden] {
+        display: none;
+      }
+
+      .prompts-label {
+        margin: 0 0 0.5rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .prompts-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .prompt-chip,
+      .chat-chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 500;
+        line-height: 1.3;
+        padding: 0.45rem 0.9rem;
+        cursor: pointer;
+        max-width: 100%;
+        text-align: left;
+        box-shadow: 0 1px 2px rgba(70, 45, 55, 0.04);
+        transition:
+          background-color 0.3s var(--ease),
+          border-color 0.3s var(--ease),
+          transform 0.3s var(--ease);
+      }
+
+      .prompt-chip:hover,
+      .chat-chip:hover {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .prompt-chip:focus-visible,
+      .chat-chip:focus-visible,
+      .undo-bar button:focus-visible,
+      .proposal-actions button:focus-visible,
+      .chat-close:focus-visible,
+      .chat-send:focus-visible,
+      .chatbot-fab:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* ---- Editor: a sheet of journal paper ---- */
       .post-wrap {
         position: relative;
         flex: 1;
         display: flex;
         flex-direction: column;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.72);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        transition: box-shadow 0.4s var(--ease);
+      }
+
+      .post-wrap:focus-within {
+        box-shadow: var(--shadow-lift), 0 0 0 3px var(--glow);
+      }
+
+      /* A soft glow after the writing helper's edit is applied. */
+      .post-wrap.just-updated {
+        animation: updated-glow 1.6s var(--ease);
+      }
+
+      @keyframes updated-glow {
+        from {
+          box-shadow: var(--shadow), 0 0 0 6px var(--glow);
+        }
       }
 
       /* Mirror of the textarea used to draw ghost-text suggestions. It must
          match #post's box and typography exactly so the text lines up. */
       #post-ghost,
       #post {
-        border: 1px solid var(--line);
-        padding: 1.25rem 1.35rem;
-        font: inherit;
+        border: 1px solid transparent;
+        padding: 1.4rem 1.5rem;
+        font-family: var(--serif);
         font-size: 1.125rem;
-        line-height: 1.6;
+        line-height: 1.7;
         white-space: pre-wrap;
         overflow-wrap: break-word;
       }
@@ -179,39 +299,48 @@
         top: 0;
         left: 0;
         margin: 0;
-        border-color: transparent;
         color: transparent;
         overflow: hidden;
         pointer-events: none;
       }
 
+      /* Suggestions stay quiet: soft color, gentle fade, never inserted
+         until the writer chooses to. */
       #post-ghost .ghost {
-        color: #8aa39b;
+        color: var(--ghost);
+        animation: ghost-in 0.6s var(--ease);
+      }
+
+      @keyframes ghost-in {
+        from {
+          opacity: 0;
+        }
       }
 
       #post-ghost kbd {
         margin-left: 0.4rem;
-        padding: 0 0.35rem;
+        padding: 0.05rem 0.4rem;
         border: 1px solid var(--line);
-        border-radius: 4px;
-        font: inherit;
+        border-radius: 6px;
+        font-family: var(--sans);
         font-size: 0.7rem;
         color: var(--muted);
-        background: #fff;
+        background: var(--bg);
         vertical-align: 0.15em;
+        animation: ghost-in 0.6s var(--ease);
       }
 
       #post-ghost kbd.swipe {
         display: inline-block;
         color: var(--accent);
-        border-color: var(--accent);
+        border-color: transparent;
         background: var(--accent-soft);
         transition: transform 0.1s ease;
       }
 
       #post-ghost kbd.swipe .arrow {
         display: inline-block;
-        animation: swipe-nudge 1.1s ease-in-out 3;
+        animation: swipe-nudge 1.6s ease-in-out 3;
       }
 
       @keyframes swipe-nudge {
@@ -224,14 +353,8 @@
         }
       }
 
-      @media (prefers-reduced-motion: reduce) {
-        #post-ghost kbd.swipe .arrow {
-          animation: none;
-        }
-      }
-
       .post-hint {
-        margin: 0.4rem 0 0;
+        margin: 0.6rem 0.25rem 0;
         font-size: 0.85rem;
         color: var(--muted);
       }
@@ -242,32 +365,64 @@
         width: 100%;
         min-height: min(60vh, 520px);
         resize: vertical;
-        border-radius: 4px;
+        border-radius: var(--radius);
         color: var(--ink);
         background: transparent;
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
         outline: none;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease;
       }
 
       #post::placeholder {
-        color: #7a9189;
+        color: var(--ghost);
+        font-style: italic;
       }
 
-      #post:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px var(--glow);
+      /* ---- Undo after an applied edit ---- */
+      .undo-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0.75rem 0 0;
+        padding: 0.6rem 0.6rem 0.6rem 1rem;
+        border-radius: 12px;
+        background: var(--accent-soft);
+        color: var(--ink);
+        font-size: 0.9rem;
+        animation: rise-in 0.4s var(--ease);
       }
 
+      .undo-bar[hidden] {
+        display: none;
+      }
+
+      .undo-bar span {
+        flex: 1;
+      }
+
+      .undo-bar button {
+        border: none;
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--accent);
+        font: inherit;
+        font-weight: 600;
+        padding: 0.4rem 0.85rem;
+        cursor: pointer;
+        transition: background-color 0.3s var(--ease);
+      }
+
+      .undo-bar button:hover {
+        background: var(--bg);
+      }
+
+      /* ---- Writing helper chat ---- */
       .chat-panel {
         display: flex;
         flex-direction: column;
         flex: 1;
         min-height: 0;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: var(--panel);
-        box-shadow: 0 10px 30px rgba(26, 46, 42, 0.08);
+        border-radius: 20px;
+        background: var(--surface);
+        box-shadow: var(--shadow-lift);
         overflow: hidden;
       }
 
@@ -275,17 +430,30 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.85rem 1rem;
+        padding: 0.9rem 1.1rem;
         border-bottom: 1px solid var(--line);
-        background: linear-gradient(180deg, #f3faf7 0%, transparent 100%);
       }
 
       .chat-header h2 {
         margin: 0;
-        font-family: "Fraunces", serif;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--sans);
         font-size: 1.05rem;
-        font-weight: 650;
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      /* Always honest that this is AI. */
+      .ai-tag {
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        background: var(--accent-soft);
         color: var(--accent);
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
       }
 
       .chat-close {
@@ -299,8 +467,9 @@
         cursor: pointer;
         padding: 0.45rem 0.6rem;
         margin-left: -0.4rem;
-        border-radius: 6px;
+        border-radius: 8px;
         white-space: nowrap;
+        transition: background-color 0.3s var(--ease), color 0.3s var(--ease);
       }
 
       .chat-close:hover {
@@ -311,34 +480,42 @@
       .chat-messages {
         flex: 1;
         overflow-y: auto;
-        padding: 1rem;
+        padding: 1.1rem;
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
       }
 
       .bubble {
-        max-width: 92%;
-        padding: 0.7rem 0.9rem;
-        border-radius: 14px;
+        max-width: 88%;
+        padding: 0.75rem 1rem;
+        border-radius: 18px;
         font-size: 0.95rem;
-        line-height: 1.45;
+        line-height: 1.5;
         white-space: pre-wrap;
         word-break: break-word;
+        animation: rise-in 0.4s var(--ease);
+      }
+
+      @keyframes rise-in {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
       }
 
       .bubble.assistant {
         align-self: flex-start;
-        background: var(--accent-soft);
+        background: var(--sage-soft);
         color: var(--ink);
-        border-bottom-left-radius: 4px;
+        border-bottom-left-radius: 6px;
       }
 
       .bubble.user {
         align-self: flex-end;
         background: var(--accent);
-        color: #fff;
-        border-bottom-right-radius: 4px;
+        color: var(--on-accent);
+        border-bottom-right-radius: 6px;
       }
 
       .bubble.system {
@@ -352,19 +529,108 @@
       }
 
       .bubble.pending {
+        animation:
+          rise-in 0.4s var(--ease),
+          soft-pulse 1.8s ease-in-out 0.4s infinite;
+      }
+
+      @keyframes soft-pulse {
+        50% {
+          opacity: 0.55;
+        }
+      }
+
+      /* A proposed edit: the writer decides whether it replaces the post. */
+      .proposal {
+        align-self: stretch;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--bg);
+        overflow: hidden;
+        animation: rise-in 0.4s var(--ease);
+      }
+
+      .proposal-label {
+        margin: 0;
+        padding: 0.6rem 1rem 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .proposal-text {
+        margin: 0;
+        padding: 0.5rem 1rem 0.75rem;
+        max-height: 14rem;
+        overflow-y: auto;
+        font-family: var(--serif);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--ink);
+      }
+
+      .proposal-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.65rem 0.75rem;
+        border-top: 1px solid var(--line);
+      }
+
+      .proposal-actions button {
+        border-radius: 10px;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        padding: 0.5rem 0.95rem;
+        cursor: pointer;
+        transition: background-color 0.3s var(--ease), border-color 0.3s var(--ease);
+      }
+
+      .proposal-actions button[hidden] {
+        display: none;
+      }
+
+      .proposal-use {
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+
+      .proposal-use:hover {
+        background: var(--accent-hover);
+      }
+
+      .proposal-keep {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+      }
+
+      .proposal-keep:hover {
+        border-color: var(--muted);
+      }
+
+      .proposal-status {
+        align-self: center;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .proposal.is-decided .proposal-text {
         opacity: 0.7;
       }
 
       .chat-footer {
         border-top: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.55);
       }
 
       .chat-suggestions {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.4rem;
-        padding: 0.55rem 0.75rem 0;
+        gap: 0.45rem;
+        padding: 0.7rem 0.85rem 0;
       }
 
       .chat-suggestions[hidden] {
@@ -372,44 +638,35 @@
       }
 
       .chat-chip {
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #fff;
-        color: var(--accent);
-        font: inherit;
         font-size: 0.8rem;
-        font-weight: 500;
-        line-height: 1.3;
-        padding: 0.35rem 0.65rem;
-        cursor: pointer;
-        max-width: 100%;
-        text-align: left;
-      }
-
-      .chat-chip:hover {
-        background: var(--accent-soft);
-        border-color: var(--accent);
+        padding: 0.4rem 0.8rem;
+        animation: rise-in 0.4s var(--ease) both;
       }
 
       .chat-compose {
         display: flex;
         gap: 0.5rem;
-        padding: 0.75rem;
+        padding: 0.8rem 0.85rem;
       }
 
       #chat-input {
         flex: 1;
         border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 0.7rem 0.85rem;
+        border-radius: 14px;
+        padding: 0.7rem 0.9rem;
         font: inherit;
         font-size: 0.95rem;
         resize: none;
         min-height: 2.6rem;
         max-height: 7rem;
         outline: none;
-        background: #fff;
+        background: var(--bg);
         color: var(--ink);
+        transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+      }
+
+      #chat-input::placeholder {
+        color: var(--ghost);
       }
 
       #chat-input:focus {
@@ -419,14 +676,19 @@
 
       .chat-send {
         border: none;
-        border-radius: 10px;
-        padding: 0 1rem;
+        border-radius: 14px;
+        padding: 0 1.1rem;
         background: var(--accent);
-        color: #fff;
+        color: var(--on-accent);
         font: inherit;
         font-weight: 600;
         cursor: pointer;
         align-self: stretch;
+        transition: background-color 0.3s var(--ease);
+      }
+
+      .chat-send:hover {
+        background: var(--accent-hover);
       }
 
       .chat-send:disabled {
@@ -454,17 +716,25 @@
         border: none;
         border-radius: 50%;
         background: var(--accent);
-        color: #fff;
+        color: var(--on-accent);
         display: grid;
         place-items: center;
         box-shadow: 0 8px 24px var(--glow);
         cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        transition: transform 0.35s var(--ease), background-color 0.35s var(--ease);
+        /* A slow, calm "breath" while idle; no bouncing. */
+        animation: breathe 5s ease-in-out infinite;
+      }
+
+      @keyframes breathe {
+        50% {
+          box-shadow: 0 8px 24px var(--glow), 0 0 0 8px var(--glow);
+        }
       }
 
       .chatbot-fab:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 28px var(--glow);
+        background: var(--accent-hover);
       }
 
       .chatbot-fab svg {
@@ -474,24 +744,25 @@
 
       .chatbot-nudge {
         position: absolute;
-        right: calc(100% + 0.65rem);
+        right: calc(100% + 0.75rem);
         bottom: calc(100% - 0.35rem);
         width: max-content;
-        max-width: min(22rem, calc(100vw - 6rem));
-        padding: 0.55rem 0.9rem;
-        border-radius: 12px 12px 2px 12px;
-        background: #fff;
+        max-width: min(20rem, calc(100vw - 6.5rem));
+        padding: 0.65rem 1rem;
+        border-radius: 16px 16px 4px 16px;
+        background: var(--surface);
         color: var(--ink);
         font-size: 0.9rem;
-        line-height: 1.3;
-        white-space: nowrap;
-        box-shadow: 0 6px 20px rgba(26, 46, 42, 0.12);
-        border: 1px solid var(--line);
+        line-height: 1.4;
+        box-shadow: var(--shadow-lift);
         opacity: 0;
-        transform: translateY(4px);
+        transform: translateY(6px);
         pointer-events: none;
         visibility: hidden;
-        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+        transition:
+          opacity 0.5s var(--ease),
+          transform 0.5s var(--ease),
+          visibility 0.5s;
       }
 
       .chatbot-nudge.is-visible {
@@ -502,7 +773,7 @@
 
       @media (min-width: 768px) {
         .screen {
-          padding: 2.5rem 1.5rem 5.5rem;
+          padding: 3rem 1.5rem 5.5rem;
         }
 
         .chat-screen {
@@ -543,7 +814,7 @@
 
       html:not(.mobile) body.chat-open #page-chat {
         display: block;
-        animation: chat-in 0.28s ease both;
+        animation: rise-in 0.45s var(--ease) both;
       }
 
       html:not(.mobile) body.chat-open #page-write .screen {
@@ -565,16 +836,13 @@
         font-size: 1.35rem;
       }
 
-      @keyframes chat-in {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-      }
-
+      /* Respect reduced motion everywhere: no slides, breaths or fades. */
       @media (prefers-reduced-motion: reduce) {
-        html:not(.mobile) body.chat-open #page-chat {
-          animation: none;
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
         }
       }
     </style>
@@ -588,16 +856,48 @@
             <p class="lede">Write an update for the people who care about you.</p>
 
             <div class="editor">
+              <!-- Journal prompts: each starts a sentence in the writer's own
+                   voice. Shown only while the post is empty. -->
+              <div id="prompts" class="prompts">
+                <p class="prompts-label">Need a place to start?</p>
+                <div class="prompts-list" role="group" aria-label="Writing prompts">
+                  <button type="button" class="prompt-chip" data-start="Today I'm feeling ">
+                    How are you feeling today?
+                  </button>
+                  <button
+                    type="button"
+                    class="prompt-chip"
+                    data-start="One small moment that mattered today was "
+                  >
+                    A small moment that mattered
+                  </button>
+                  <button
+                    type="button"
+                    class="prompt-chip"
+                    data-start="Something that would really help us right now is "
+                  >
+                    What would help right now?
+                  </button>
+                  <button type="button" class="prompt-chip" data-start="I'm grateful for ">
+                    Something you're grateful for
+                  </button>
+                </div>
+              </div>
+
               <label class="sr-only" for="post">Post body</label>
               <div class="post-wrap">
                 <div id="post-ghost" aria-hidden="true"></div>
                 <textarea
                   id="post"
                   name="post"
-                  placeholder="Share how it today went, what you need, or a small moment that mattered…"
+                  placeholder="Share how today went, what you need, or a small moment that mattered…"
                   aria-describedby="post-hint"
                   autofocus
                 ></textarea>
+              </div>
+              <div id="undo-bar" class="undo-bar" role="status" hidden>
+                <span>Updated with the writing helper's suggestion.</span>
+                <button type="button" id="undo-edit">Undo</button>
               </div>
               <p id="post-hint" class="post-hint">
                 Pause for a few seconds to get a suggestion.
@@ -612,7 +912,7 @@
             <aside
               id="chat-panel"
               class="chat-panel"
-              aria-label="Writing assistant"
+              aria-label="Writing helper (AI)"
             >
               <div class="chat-header">
                 <button
@@ -623,7 +923,7 @@
                 >
                   ← Your post
                 </button>
-                <h2>Writing assistant</h2>
+                <h2>Writing helper <span class="ai-tag">AI</span></h2>
               </div>
               <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
               <div class="chat-footer">
@@ -657,14 +957,14 @@
           aria-live="polite"
           hidden
         >
-          Stuck on what to write?
+          Not sure where to start? I can help you find words.
         </div>
         <button
           type="button"
           class="chatbot-fab"
           id="chatbot-fab"
-          aria-label="Open AI writing assistant"
-          title="Open writing assistant"
+          aria-label="Open the writing helper (AI)"
+          title="Writing helper (AI)"
         >
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
@@ -730,10 +1030,12 @@
         }
         var track = document.querySelector(".pager-track");
 
+        // Journal-style openers, echoing the prompts on the post page.
         var STARTER_SUGGESTIONS = [
+          "Help me share how I'm feeling",
+          "Help me ask for what we need",
+          "Help me say thank you",
           "Help me get started",
-          "Make this warmer",
-          "Shorten this draft",
         ];
         var FALLBACK_ASK = [
           "Yes, that sounds right",
@@ -775,13 +1077,13 @@
           suggestionsEl.hidden = true;
         }
 
-        function showSuggestions(items) {
+        function showSuggestions(items, max) {
           var list = (items || [])
             .map(function (s) {
               return typeof s === "string" ? s.trim() : "";
             })
             .filter(Boolean)
-            .slice(0, 3);
+            .slice(0, max || 3);
           clearSuggestions();
           if (!list.length) return;
           list.forEach(function (text) {
@@ -837,8 +1139,12 @@
             clearTimeout(idleTimer);
             if (!started) {
               started = true;
-              addBubble("assistant", "What can I help you with?");
-              showSuggestions(STARTER_SUGGESTIONS);
+              addBubble(
+                "assistant",
+                "Hi, I'm an AI writing helper. I can help you find words, " +
+                  "but your post stays yours: nothing changes unless you choose it."
+              );
+              showSuggestions(STARTER_SUGGESTIONS, 4);
             }
             // preventScroll keeps the browser from jumping the pager mid-slide.
             // Skip on touch so the keyboard doesn't cover the chat as it opens.
@@ -1002,18 +1308,120 @@
           endDrag(e, true);
         });
 
+        // ---- The writer stays in control of their post ----
+        // The helper never rewrites the post by itself: an edit arrives as a
+        // preview the writer can use or decline, and a used edit can be undone
+        // until they start typing again.
+        var postWrap = post.parentElement;
+        var undoBar = document.getElementById("undo-bar");
+        var undoBtn = document.getElementById("undo-edit");
+        var undoState = null; // { before, card }
+        var settingPost = false;
+
+        function setPost(text) {
+          settingPost = true;
+          post.value = text;
+          post.dispatchEvent(new Event("input", { bubbles: true }));
+          settingPost = false;
+        }
+
+        function decideProposal(card, status, canUndo) {
+          card.classList.add("is-decided");
+          card.querySelector(".proposal-use").hidden = true;
+          card.querySelector(".proposal-keep").hidden = true;
+          card.querySelector(".proposal-undo").hidden = !canUndo;
+          card.querySelector(".proposal-status").textContent = status;
+        }
+
+        function dropUndo() {
+          if (!undoState) return;
+          if (undoState.card) decideProposal(undoState.card, "Used in your post.", false);
+          undoState = null;
+          undoBar.hidden = true;
+        }
+
+        function useProposal(text, card) {
+          dropUndo();
+          undoState = { before: post.value, card: card };
+          setPost(text);
+          decideProposal(card, "Used in your post.", true);
+          undoBar.hidden = false;
+          postWrap.classList.remove("just-updated");
+          void postWrap.offsetWidth; // restart the glow
+          postWrap.classList.add("just-updated");
+        }
+
+        function undoEdit() {
+          if (!undoState) return;
+          var state = undoState;
+          undoState = null;
+          undoBar.hidden = true;
+          setPost(state.before);
+          if (state.card) {
+            decideProposal(state.card, "Undone. Your earlier draft is back.", false);
+          }
+        }
+
+        function addProposal(text) {
+          var card = document.createElement("div");
+          card.className = "proposal";
+          card.setAttribute("role", "group");
+          card.setAttribute("aria-label", "Suggested version of your post");
+
+          var label = document.createElement("p");
+          label.className = "proposal-label";
+          label.textContent = "Suggested version of your post";
+          var body = document.createElement("p");
+          body.className = "proposal-text";
+          body.textContent = text;
+
+          var actions = document.createElement("div");
+          actions.className = "proposal-actions";
+          var use = document.createElement("button");
+          use.type = "button";
+          use.className = "proposal-use";
+          use.textContent = "Use this";
+          var keep = document.createElement("button");
+          keep.type = "button";
+          keep.className = "proposal-keep";
+          keep.textContent = "Keep mine";
+          var undo = document.createElement("button");
+          undo.type = "button";
+          undo.className = "proposal-keep proposal-undo";
+          undo.textContent = "Undo";
+          undo.hidden = true;
+          var status = document.createElement("span");
+          status.className = "proposal-status";
+          status.setAttribute("role", "status");
+
+          use.addEventListener("click", function () {
+            useProposal(text, card);
+          });
+          keep.addEventListener("click", function () {
+            decideProposal(card, "Kept your version.", false);
+          });
+          undo.addEventListener("click", undoEdit);
+
+          actions.append(use, keep, undo, status);
+          card.append(label, body, actions);
+          messagesEl.appendChild(card);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        undoBtn.addEventListener("click", undoEdit);
+
+        // Typing makes the post theirs again; undo would erase that work.
+        post.addEventListener("input", function () {
+          if (!settingPost) dropUndo();
+        });
+
         function applyAgentReply(data) {
           var edited = data.action === "edit" && typeof data.text === "string";
-          if (edited) {
-            post.value = data.text;
-            post.dispatchEvent(new Event("input", { bubbles: true }));
-          }
           addBubble(
             "assistant",
-            data.reply || "Sorry — I didn't get a usable reply."
+            data.reply || "Sorry, I didn't quite catch that. Could you try again?"
           );
-          // The post is on the other page now, so say it changed.
-          if (edited) addBubble("system", "Your post was updated.");
+          if (edited) addProposal(data.text);
           showSuggestions(suggestionsForReply(data));
         }
 
@@ -1057,11 +1465,11 @@
             applyAgentReply(data);
           } catch (err) {
             pending.remove();
+            console.error("Writing helper request failed:", err);
             addBubble(
               "system",
-              err && err.message
-                ? err.message
-                : "Something went wrong talking to the agent."
+              "Sorry, I couldn't reach the writing helper just now. " +
+                "Your post is safe. Please try again in a moment."
             );
           } finally {
             busy = false;
@@ -1090,6 +1498,30 @@
 
         post.addEventListener("input", resetIdleTimer);
         resetIdleTimer();
+
+        // ---- Journal prompts ----
+        // A prompt only starts the sentence; the rest is in their own words.
+        var promptsEl = document.getElementById("prompts");
+
+        function updatePrompts() {
+          promptsEl.hidden = post.value.trim().length > 0;
+        }
+
+        promptsEl.addEventListener("click", function (e) {
+          var chip = e.target.closest(".prompt-chip");
+          if (!chip) return;
+          var start = chip.getAttribute("data-start");
+          post.focus();
+          post.setSelectionRange(post.value.length, post.value.length);
+          // execCommand keeps the insertion on the native undo stack.
+          if (!document.execCommand("insertText", false, start)) {
+            post.setRangeText(start, post.value.length, post.value.length, "end");
+            post.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+        });
+
+        post.addEventListener("input", updatePrompts);
+        updatePrompts();
 
         // ---- Sentence autocomplete (ghost text, Tab to accept) ----
         // Only suggest after a real pause; each suggestion is a full agent
