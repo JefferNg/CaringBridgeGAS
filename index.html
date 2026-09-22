@@ -10,6 +10,19 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Source+Sans+3:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Phones and tablets get the two-page swipe layout; desktop browsers
+      // (even with a touchscreen) get one page with the chat under the
+      // editor. iPadOS reports itself as a Mac, so check for touch too.
+      (function () {
+        var ua = navigator.userAgent;
+        var mobile =
+          (navigator.userAgentData && navigator.userAgentData.mobile) ||
+          /Android|iPhone|iPad|iPod|Mobile/i.test(ua) ||
+          (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+        document.documentElement.classList.toggle("mobile", !!mobile);
+      })();
+    </script>
     <style>
       :root {
         --ink: #1a2e2a;
@@ -501,6 +514,69 @@
           bottom: 2rem;
         }
       }
+
+      /* Desktop: one scrolling page like the original; the chat opens
+         under the editor instead of on its own page. */
+      html:not(.mobile) body {
+        overflow: auto;
+      }
+
+      html:not(.mobile) .pager {
+        height: auto;
+        overflow: visible;
+      }
+
+      html:not(.mobile) .pager-track {
+        display: block;
+        transform: none;
+        transition: none;
+      }
+
+      html:not(.mobile) .page {
+        height: auto;
+        overflow: visible;
+      }
+
+      html:not(.mobile) #page-chat {
+        display: none;
+      }
+
+      html:not(.mobile) body.chat-open #page-chat {
+        display: block;
+        animation: chat-in 0.28s ease both;
+      }
+
+      html:not(.mobile) body.chat-open #page-write .screen {
+        padding-bottom: 0;
+      }
+
+      html:not(.mobile) .chat-screen {
+        height: min(70vh, 640px);
+        padding-bottom: 2.5rem;
+      }
+
+      html:not(.mobile) .chatbot {
+        position: fixed;
+      }
+
+      html:not(.mobile) .chat-close {
+        order: 1;
+        margin: 0 -0.4rem 0 auto;
+        font-size: 1.35rem;
+      }
+
+      @keyframes chat-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html:not(.mobile) body.chat-open #page-chat {
+          animation: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -607,15 +683,8 @@
 
     <script>
       (function () {
-        // Swiping between pages and swipe-to-accept are for phones and
-        // tablets only; desktop browsers (even with a touchscreen) keep the
-        // button and Tab. iPadOS reports itself as a Mac, so check for touch.
-        var ua = navigator.userAgent;
-        var IS_MOBILE =
-          (navigator.userAgentData && navigator.userAgentData.mobile) ||
-          /Android|iPhone|iPad|iPod|Mobile/i.test(ua) ||
-          (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-        document.documentElement.classList.toggle("mobile", IS_MOBILE);
+        // Set in <head>: swipes and the two-page layout are mobile-only.
+        var IS_MOBILE = document.documentElement.classList.contains("mobile");
 
         // Local uvicorn: same-origin. GitHub Pages: Cloud Run proxy (POST
         // /api/chat is not available on static Pages — that caused HTTP 405).
@@ -653,6 +722,12 @@
         var pageWrite = document.getElementById("page-write");
         var pageChat = document.getElementById("page-chat");
         var pager = document.querySelector(".pager");
+
+        // Desktop's chat sits under the post, so its button just closes it.
+        if (!IS_MOBILE) {
+          closeBtn.textContent = "\u00d7";
+          closeBtn.setAttribute("aria-label", "Close assistant");
+        }
         var track = document.querySelector(".pager-track");
 
         var STARTER_SUGGESTIONS = [
@@ -755,7 +830,8 @@
           // the finger let go to the page's resting spot.
           track.style.transform = "";
           pageChat.inert = !open;
-          pageWrite.inert = open;
+          // On desktop both are on screen, so the post stays editable.
+          pageWrite.inert = IS_MOBILE && open;
           if (open) {
             hideNudge();
             clearTimeout(idleTimer);
@@ -766,7 +842,11 @@
             }
             // preventScroll keeps the browser from jumping the pager mid-slide.
             // Skip on touch so the keyboard doesn't cover the chat as it opens.
-            if (!window.matchMedia("(pointer: coarse)").matches) {
+            if (!IS_MOBILE) {
+              // Desktop: the chat opens under the editor; bring it into view.
+              input.focus({ preventScroll: true });
+              pageChat.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            } else if (!window.matchMedia("(pointer: coarse)").matches) {
               input.focus({ preventScroll: true });
             }
           } else {
@@ -779,7 +859,7 @@
         // gesture returns to the post instead of leaving the site.
         function openChat() {
           if (isChatOpen()) return;
-          history.pushState({ chat: true }, "");
+          if (IS_MOBILE) history.pushState({ chat: true }, "");
           showChatPage(true);
         }
 
