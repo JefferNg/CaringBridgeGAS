@@ -108,19 +108,70 @@
         border: 0;
       }
 
-      #post {
+      .post-wrap {
+        position: relative;
         flex: 1;
-        width: 100%;
-        min-height: min(60vh, 520px);
-        resize: vertical;
-        border: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
         border-radius: 4px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      /* Mirror of the textarea used to draw ghost-text suggestions. It must
+         match #post's box and typography exactly so the text lines up. */
+      #post-ghost,
+      #post {
+        border: 1px solid var(--line);
         padding: 1.25rem 1.35rem;
         font: inherit;
         font-size: 1.125rem;
         line-height: 1.6;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+      }
+
+      #post-ghost {
+        position: absolute;
+        top: 0;
+        left: 0;
+        margin: 0;
+        border-color: transparent;
+        color: transparent;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      #post-ghost .ghost {
+        color: #8aa39b;
+      }
+
+      #post-ghost kbd {
+        margin-left: 0.4rem;
+        padding: 0 0.35rem;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        font: inherit;
+        font-size: 0.7rem;
+        color: var(--muted);
+        background: #fff;
+        vertical-align: 0.15em;
+      }
+
+      .post-hint {
+        margin: 0.4rem 0 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      #post {
+        position: relative;
+        flex: 1;
+        width: 100%;
+        min-height: min(60vh, 520px);
+        resize: vertical;
+        border-radius: 4px;
         color: var(--ink);
-        background: rgba(255, 255, 255, 0.72);
+        background: transparent;
         box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
         outline: none;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -382,12 +433,19 @@
       <div class="workspace">
         <div class="editor">
           <label class="sr-only" for="post">Post body</label>
-          <textarea
-            id="post"
-            name="post"
-            placeholder="Share how it today went, what you need, or a small moment that mattered…"
-            autofocus
-          ></textarea>
+          <div class="post-wrap">
+            <div id="post-ghost" aria-hidden="true"></div>
+            <textarea
+              id="post"
+              name="post"
+              placeholder="Share how it today went, what you need, or a small moment that mattered…"
+              aria-describedby="post-hint"
+              autofocus
+            ></textarea>
+          </div>
+          <p id="post-hint" class="post-hint">
+            Pause for a few seconds to get a suggestion. Press Tab to accept it, Esc to dismiss.
+          </p>
         </div>
 
         <aside
@@ -473,8 +531,9 @@
         if (!apiBase && onPages) {
           apiBase = DEFAULT_PAGES_API;
         }
-        var API_CHAT =
-          (apiBase ? apiBase.replace(/\/$/, "") : "") + "/api/chat";
+        var API_ROOT = apiBase ? apiBase.replace(/\/$/, "") : "";
+        var API_CHAT = API_ROOT + "/api/chat";
+        var API_COMPLETE = API_ROOT + "/api/complete";
 
         var IDLE_MS = 30000;
         var post = document.getElementById("post");
@@ -619,6 +678,152 @@
 
         post.addEventListener("input", resetIdleTimer);
         resetIdleTimer();
+
+        // ---- Sentence autocomplete (ghost text, Tab to accept) ----
+        // Only suggest after a real pause; each suggestion is a full agent
+        // round-trip, so this is not meant to fire on every keystroke.
+        var COMPLETE_DELAY_MS = 2500;
+        var ghostEl = document.getElementById("post-ghost");
+        var suggestion = "";
+        var completeTimer = null;
+        var completeSeq = 0;
+        var completeSessionId = null; // kept apart from the chat session
+
+        function caretAtEnd() {
+          return (
+            post.selectionStart === post.selectionEnd &&
+            post.selectionEnd === post.value.length
+          );
+        }
+
+        function syncGhostBox() {
+          // clientWidth/Height exclude the scrollbar, so wrapping matches.
+          ghostEl.style.width = post.clientWidth + 2 + "px";
+          ghostEl.style.height = post.clientHeight + 2 + "px";
+          ghostEl.scrollTop = post.scrollTop;
+        }
+
+        function renderGhost() {
+          ghostEl.textContent = "";
+          if (!suggestion) return;
+          ghostEl.appendChild(document.createTextNode(post.value));
+          var span = document.createElement("span");
+          span.className = "ghost";
+          span.textContent = suggestion;
+          ghostEl.appendChild(span);
+          var kbd = document.createElement("kbd");
+          kbd.textContent = "Tab";
+          ghostEl.appendChild(kbd);
+          syncGhostBox();
+        }
+
+        function clearSuggestion() {
+          completeSeq++; // drop any in-flight response
+          clearTimeout(completeTimer);
+          if (suggestion) {
+            suggestion = "";
+            renderGhost();
+          }
+        }
+
+        // ?mock=1 serves canned suggestions with no backend, for trying the
+        // interaction before the Cloud Run proxy has /api/complete.
+        var MOCK_COMPLETE = params.get("mock") === "1";
+        var MOCK_ENDINGS = [
+          "and we are taking things one day at a time.",
+          "and the care team has been wonderful.",
+          "which gave us a lot of hope.",
+          "but we are staying positive.",
+        ];
+        var MOCK_NEXT = [
+          "Thank you all for the love and support.",
+          "We will share more when we know more.",
+          "Your messages mean more than you know.",
+          "Please keep the notes and prayers coming.",
+        ];
+        var mockIndex = 0;
+
+        function mockComplete(text) {
+          var list = /[.!?]["')\]]?\s*$/.test(text) ? MOCK_NEXT : MOCK_ENDINGS;
+          var completion = list[mockIndex++ % list.length];
+          if (!/\s$/.test(text)) completion = " " + completion;
+          return new Promise(function (resolve) {
+            // Roughly the latency of a real agent round-trip.
+            setTimeout(function () {
+              resolve({ completion: completion });
+            }, 1200);
+          });
+        }
+
+        async function requestCompletion(text) {
+          if (MOCK_COMPLETE) return mockComplete(text);
+          var res = await fetch(API_COMPLETE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: text,
+              user_id: userId,
+              session_id: completeSessionId,
+            }),
+          });
+          if (!res.ok) return null;
+          return res.json();
+        }
+
+        async function fetchSuggestion() {
+          var text = post.value;
+          if (text.trim().length < 3 || !caretAtEnd()) return;
+          var seq = ++completeSeq;
+          try {
+            var data = await requestCompletion(text);
+            if (data && data.session_id) completeSessionId = data.session_id;
+            // Ignore stale replies: the user kept typing or moved the caret.
+            if (seq !== completeSeq || post.value !== text || !caretAtEnd()) return;
+            suggestion = (data && data.completion) || "";
+            renderGhost();
+          } catch (err) {
+            // Autocomplete is best-effort; stay quiet on network errors.
+          }
+        }
+
+        function acceptSuggestion() {
+          var text = suggestion;
+          clearSuggestion();
+          post.focus();
+          // execCommand keeps the insertion on the native undo stack.
+          if (!document.execCommand("insertText", false, text)) {
+            post.setRangeText(text, post.value.length, post.value.length, "end");
+            post.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+        }
+
+        post.addEventListener("input", function () {
+          clearSuggestion();
+          completeTimer = setTimeout(fetchSuggestion, COMPLETE_DELAY_MS);
+        });
+
+        post.addEventListener("keydown", function (e) {
+          if (!suggestion || e.isComposing) return;
+          if (
+            (e.key === "Tab" && !e.shiftKey) ||
+            (e.key === "ArrowRight" && caretAtEnd())
+          ) {
+            e.preventDefault();
+            acceptSuggestion();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            clearSuggestion();
+          } else if (e.key.indexOf("Arrow") === 0 || e.key === "Home" || e.key === "End") {
+            clearSuggestion();
+          }
+        });
+
+        post.addEventListener("mousedown", clearSuggestion);
+        post.addEventListener("blur", clearSuggestion);
+        post.addEventListener("scroll", syncGhostBox);
+        if (window.ResizeObserver) {
+          new ResizeObserver(syncGhostBox).observe(post);
+        }
       })();
     </script>
   </body>

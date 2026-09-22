@@ -226,10 +226,9 @@ def health():
     return info
 
 
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(body: ChatRequest):
+def load_agent_or_500():
     try:
-        agent = get_agent()
+        return get_agent()
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -240,46 +239,136 @@ async def chat(body: ChatRequest):
             ),
         ) from exc
 
-    session_id = body.session_id
-    try:
-        if not session_id and hasattr(agent, "async_create_session"):
-            session = await agent.async_create_session(user_id=body.user_id)
-            if isinstance(session, dict):
-                session_id = session.get("id") or session.get("session_id")
-            else:
-                session_id = getattr(session, "id", None)
 
-        events: list[dict[str, Any]] = []
-        kwargs: dict[str, Any] = {
-            "user_id": body.user_id,
-            "message": build_prompt(body.message, body.draft),
-        }
-        if session_id:
-            kwargs["session_id"] = session_id
-
-        if hasattr(agent, "async_stream_query"):
-            async for event in agent.async_stream_query(**kwargs):
-                if isinstance(event, dict):
-                    events.append(event)
-                else:
-                    events.append({"text": str(event)})
+async def query_agent(
+    agent: Any, user_id: str, session_id: Optional[str], message: str
+) -> tuple[str, Optional[str]]:
+    """Send one message to the agent; return (reply text, session_id)."""
+    if not session_id and hasattr(agent, "async_create_session"):
+        session = await agent.async_create_session(user_id=user_id)
+        if isinstance(session, dict):
+            session_id = session.get("id") or session.get("session_id")
         else:
-            # Sync stream fallback for engines that only expose stream_query.
-            for event in agent.stream_query(**kwargs):
-                if isinstance(event, dict):
-                    events.append(event)
-                else:
-                    events.append({"text": str(event)})
+            session_id = getattr(session, "id", None)
+
+    events: list[dict[str, Any]] = []
+    kwargs: dict[str, Any] = {"user_id": user_id, "message": message}
+    if session_id:
+        kwargs["session_id"] = session_id
+
+    if hasattr(agent, "async_stream_query"):
+        async for event in agent.async_stream_query(**kwargs):
+            events.append(event if isinstance(event, dict) else {"text": str(event)})
+    else:
+        # Sync stream fallback for engines that only expose stream_query.
+        for event in agent.stream_query(**kwargs):
+            events.append(event if isinstance(event, dict) else {"text": str(event)})
+    return collect_text(events), session_id
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(body: ChatRequest):
+    agent = load_agent_or_500()
+    try:
+        raw, session_id = await query_agent(
+            agent,
+            body.user_id,
+            body.session_id,
+            build_prompt(body.message, body.draft),
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Agent query failed: {exc}") from exc
 
-    raw = collect_text(events) or "(empty agent reply)"
-    message, action, edited = parse_structured(raw)
+    message, action, edited = parse_structured(raw or "(empty agent reply)")
     return ChatResponse(
         reply=message,
         session_id=session_id,
         action=action,
         text=edited,
+    )
+
+
+class CompleteRequest(BaseModel):
+    text: str = Field(..., min_length=1)
+    user_id: str = "caringbridge_user"
+    session_id: Optional[str] = None
+
+
+class CompleteResponse(BaseModel):
+    completion: str
+    session_id: Optional[str] = None
+
+
+def build_complete_prompt(text: str) -> str:
+    return "\n".join(
+        [
+            "AUTOCOMPLETE REQUEST (separate from any chat). Someone is writing a",
+            "CaringBridge health update to friends and family and has paused.",
+            "Continue their text from exactly where it stops, in their voice.",
+            "Finish the current sentence, or if it already ends, write one short",
+            "next sentence. At most about 15 words. Do not repeat their text and",
+            "do not invent specific medical facts, names, or numbers.",
+            "",
+            "Their text so far:",
+            '"""',
+            text,
+            '"""',
+            "",
+            "Reply with ONLY a single JSON object (no markdown fences):",
+            '{"completion":"<continuation text, or empty string if nothing fits>"}',
+        ]
+    )
+
+
+def parse_completion(reply: str) -> str:
+    import json
+
+    start, end = reply.find("{"), reply.rfind("}")
+    if start != -1 and end > start:
+        try:
+            data = json.loads(reply[start : end + 1])
+            if isinstance(data, dict) and isinstance(data.get("completion"), str):
+                return data["completion"]
+        except Exception:
+            pass
+    return ""
+
+
+def clean_completion(text: str, completion: str) -> str:
+    completion = completion.replace("\n", " ").rstrip()
+    completion = completion.strip('"').strip("\u201c\u201d")
+    if not completion.strip():
+        return ""
+    # The model sometimes echoes the end of the draft; drop the overlap.
+    tail = text.rstrip()
+    stripped = completion.lstrip()
+    for n in range(min(len(tail), len(stripped)), 3, -1):
+        if tail.endswith(stripped[:n]):
+            completion = stripped[n:]
+            break
+    if not completion.strip():
+        return ""
+    # Make the join read naturally: one space between words.
+    if text[-1:].isspace():
+        completion = completion.lstrip()
+    elif not completion[0].isspace() and completion[0] not in ".,;:!?')":
+        completion = " " + completion
+    return completion
+
+
+@app.post("/api/complete", response_model=CompleteResponse)
+async def complete(body: CompleteRequest):
+    agent = load_agent_or_500()
+    text = body.text[-2000:]
+    try:
+        raw, session_id = await query_agent(
+            agent, body.user_id, body.session_id, build_complete_prompt(text)
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Completion failed: {exc}") from exc
+    return CompleteResponse(
+        completion=clean_completion(text, parse_completion(raw)),
+        session_id=session_id,
     )
 
 
