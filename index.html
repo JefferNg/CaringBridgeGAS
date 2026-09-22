@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#fbf7f2" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1f1c26" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fbf7f2" />
+    <meta name="color-scheme" content="light only" />
     <title>CaringBridge — Write a post</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -29,7 +29,7 @@
       /* Warm journal palette built on CaringBridge's own plum and slate
          navy; every text pair here meets WCAG AA contrast. */
       :root {
-        color-scheme: light;
+        color-scheme: light only;
         --bg: #fbf7f2;
         --bg-blush: #f6e6ec;
         --bg-sage: #e6ede4;
@@ -54,33 +54,6 @@
         --ease: cubic-bezier(0.33, 1, 0.68, 1);
         --serif: "Literata", Georgia, serif;
         --sans: "Figtree", system-ui, sans-serif;
-      }
-
-      /* Warm plum-charcoal for late nights, never pure black. */
-      @media (prefers-color-scheme: dark) {
-        :root {
-          color-scheme: dark;
-          --bg: #1f1c26;
-          --bg-blush: #2e2330;
-          --bg-sage: #232a28;
-          --surface: #27232f;
-          --ink: #f3ece6;
-          --muted: #b9adb4;
-          --line: #3a3442;
-          --accent: #d99ab6;
-          --accent-hover: #e6b1c8;
-          --accent-soft: #3a2a36;
-          --on-accent: #1f1c26;
-          --sage-soft: #2c3330;
-          --ghost: #948895;
-          --bubble-1: #3a2a36;
-          --bubble-2: #2c3330;
-          --bubble-3: #3a2f28;
-          --bubble-4: #302a3a;
-          --glow: rgba(217, 154, 182, 0.22);
-          --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 28px rgba(0, 0, 0, 0.28);
-          --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.25), 0 16px 40px rgba(0, 0, 0, 0.4);
-        }
       }
 
       * {
@@ -153,7 +126,7 @@
         min-height: 100%;
         max-width: 720px;
         margin: 0 auto;
-        padding: 1.75rem 1.25rem 5.5rem;
+        padding: 1.25rem 1rem 5.5rem;
       }
 
       .chat-screen {
@@ -168,19 +141,23 @@
       .brand {
         font-family: var(--sans);
         font-weight: 700;
-        font-size: clamp(1.6rem, 4vw, 2rem);
+        font-size: clamp(1.5rem, 4vw, 2rem);
         letter-spacing: -0.015em;
-        margin: 0 0 0.3rem;
+        margin: 0 0 0.25rem;
         color: var(--accent);
+        text-align: center;
       }
 
       .lede {
-        margin: 0 0 1.5rem;
+        margin: 0 auto 1.25rem;
+        max-width: 26rem;
         font-family: var(--serif);
         font-style: italic;
         color: var(--muted);
-        font-size: 1.1rem;
+        font-size: clamp(1rem, 2.6vw, 1.1rem);
         line-height: 1.5;
+        text-align: center;
+        text-wrap: balance;
       }
 
       .editor {
@@ -204,7 +181,7 @@
 
       /* ---- Journal prompts (empty editor only) ---- */
       .prompts {
-        margin: 0 0 1.5rem;
+        margin: 0 0 1.25rem;
         text-align: center;
       }
 
@@ -213,23 +190,16 @@
       }
 
       .prompts-label {
-        margin: 0 0 0.85rem;
+        margin: 0 0 0.7rem;
         font-size: 0.85rem;
         color: var(--muted);
       }
 
-      /* Two by two on phones, one row of four when there's room. */
+      /* One row of four, shrinking to fit a phone. */
       .prompts-list {
-        display: grid;
-        grid-template-columns: repeat(2, auto);
+        display: flex;
         justify-content: center;
-        gap: 0.9rem 1.1rem;
-      }
-
-      @media (min-width: 560px) {
-        .prompts-list {
-          grid-template-columns: repeat(4, auto);
-        }
+        gap: clamp(0.5rem, 2.5vw, 1.1rem);
       }
 
       .prompt-chip,
@@ -276,16 +246,18 @@
       .prompt-chip {
         display: grid;
         place-items: center;
-        width: clamp(6.5rem, 22vw, 7.75rem);
+        flex: 0 1 auto;
+        width: clamp(4.6rem, 20vw, 6.75rem);
         aspect-ratio: 1;
-        padding: 0.75rem;
+        padding: 0.4rem;
         border: none;
         border-radius: 50%;
         background: var(--bubble-1);
         color: var(--ink);
-        font-size: 0.85rem;
-        line-height: 1.25;
+        font-size: clamp(0.75rem, 2.2vw, 0.85rem);
+        line-height: 1.2;
         text-align: center;
+        text-wrap: balance;
         box-shadow: var(--shadow);
         animation: float 6s ease-in-out infinite;
         transition:
@@ -428,17 +400,19 @@
       }
 
       .post-hint {
-        margin: 0.6rem 0.25rem 0;
-        font-size: 0.85rem;
+        margin: 0.6rem 0 0;
+        font-size: 0.8rem;
         color: var(--muted);
+        text-align: center;
+        text-wrap: balance;
       }
 
       #post {
         position: relative;
         flex: 1;
         width: 100%;
-        min-height: min(60vh, 520px);
-        resize: vertical;
+        min-height: 11rem;
+        resize: none;
         border-radius: var(--radius);
         color: var(--ink);
         background: transparent;
@@ -882,6 +856,11 @@
         overflow: visible;
       }
 
+      html:not(.mobile) #post {
+        min-height: min(45vh, 420px);
+        resize: vertical;
+      }
+
       html:not(.mobile) #page-chat {
         display: none;
       }
@@ -935,25 +914,37 @@
               <div id="prompts" class="prompts">
                 <p class="prompts-label">Need a place to start?</p>
                 <div class="prompts-list" role="group" aria-label="Writing prompts">
-                  <button type="button" class="prompt-chip" data-start="Today I'm feeling ">
-                    How are you feeling today?
+                  <button
+                    type="button"
+                    class="prompt-chip"
+                    title="How are you feeling today?"
+                    data-start="Today I'm feeling "
+                  >
+                    How I'm feeling
                   </button>
                   <button
                     type="button"
                     class="prompt-chip"
+                    title="A small moment that mattered"
                     data-start="One small moment that mattered today was "
                   >
-                    A small moment that mattered
+                    A small moment
                   </button>
                   <button
                     type="button"
                     class="prompt-chip"
+                    title="What would help right now?"
                     data-start="Something that would really help us right now is "
                   >
-                    What would help right now?
+                    What would help
                   </button>
-                  <button type="button" class="prompt-chip" data-start="I'm grateful for ">
-                    What you're grateful for
+                  <button
+                    type="button"
+                    class="prompt-chip"
+                    title="What are you grateful for?"
+                    data-start="I'm grateful for "
+                  >
+                    I'm grateful for
                   </button>
                 </div>
               </div>
@@ -974,8 +965,8 @@
                 <button type="button" id="undo-edit">Undo</button>
               </div>
               <p id="post-hint" class="post-hint">
-                Pause for a few seconds to get a suggestion.
-                <span class="hint-keys">Press Tab to accept it, Esc to dismiss.</span>
+                Pause for a moment and a gentle suggestion may appear.
+                <span class="hint-keys">Press Tab to accept.</span>
               </p>
             </div>
           </div>
@@ -1610,7 +1601,7 @@
         var TOUCH = IS_MOBILE;
         if (TOUCH) {
           document.querySelector("#post-hint .hint-keys").textContent =
-            "Swipe right to accept it.";
+            "Swipe right to accept.";
         }
 
         function caretAtEnd() {
