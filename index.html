@@ -49,12 +49,19 @@
         height: 100dvh;
         overflow: hidden;
         overflow: clip;
+        /* Horizontal touch moves drive the pager; vertical still scrolls. */
+        touch-action: pan-y;
       }
 
       .pager-track {
         display: flex;
         height: 100%;
         transition: transform 0.38s cubic-bezier(0.22, 0.8, 0.24, 1);
+      }
+
+      /* Finger-driven: the track tracks the touch with no easing. */
+      .pager-track.is-dragging {
+        transition: none;
       }
 
       body.chat-open .pager-track {
@@ -632,6 +639,8 @@
         var suggestionsEl = document.getElementById("chat-suggestions");
         var pageWrite = document.getElementById("page-write");
         var pageChat = document.getElementById("page-chat");
+        var pager = document.querySelector(".pager");
+        var track = document.querySelector(".pager-track");
 
         var STARTER_SUGGESTIONS = [
           "Help me get started",
@@ -729,6 +738,9 @@
         // Only the visible page is focusable, so Tab can't wander off-screen.
         function showChatPage(open) {
           document.body.classList.toggle("chat-open", open);
+          // Drop any drag offset so the CSS transition eases from wherever
+          // the finger let go to the page's resting spot.
+          track.style.transform = "";
           pageChat.inert = !open;
           pageWrite.inert = open;
           if (open) {
@@ -775,6 +787,127 @@
         if (history.state && history.state.chat) {
           history.replaceState(null, "");
         }
+
+        // ---- Swipes (touch) ----
+        // Anywhere on the screen: left on the post page drags over to the
+        // chat, right on the post page accepts the autocomplete suggestion,
+        // and right on the chat page drags back. The track follows the
+        // finger, so you can hold it partway and see both pages; on release
+        // it settles on the nearer page, or the one a quick flick points toward.
+        var DRAG_LOCK_PX = 10; // movement before deciding swipe vs scroll
+        var FLICK_PX_PER_MS = 0.4;
+        var SWIPE_MIN_PX = 60; // how far a right swipe must go to accept
+        var drag = null;
+
+        function dragPoint(e) {
+          return { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp };
+        }
+
+        function swipeBadge() {
+          return ghostEl.querySelector("kbd.swipe");
+        }
+
+        pager.addEventListener(
+          "touchstart",
+          function (e) {
+            drag = null;
+            if (e.touches.length !== 1) return;
+            var p = dragPoint(e);
+            drag = {
+              open: isChatOpen(),
+              accept: false, // true once locked as a swipe-to-accept
+              start: p,
+              last: p,
+              prev: p,
+              width: pager.clientWidth,
+              locked: false,
+            };
+          },
+          { passive: true }
+        );
+
+        pager.addEventListener(
+          "touchmove",
+          function (e) {
+            if (!drag) return;
+            var p = dragPoint(e);
+            var dx = p.x - drag.start.x;
+            var dy = p.y - drag.start.y;
+            if (!drag.locked) {
+              if (Math.abs(dx) < DRAG_LOCK_PX && Math.abs(dy) < DRAG_LOCK_PX) return;
+              if (Math.abs(dx) < Math.abs(dy)) {
+                drag = null; // vertical: leave it to page scrolling
+                return;
+              }
+              drag.locked = true;
+              // Rightward on the post page accepts the suggestion instead.
+              drag.accept = !drag.open && dx > 0;
+              if (drag.accept && !suggestion) {
+                drag = null;
+                return;
+              }
+              if (!drag.accept) track.classList.add("is-dragging");
+            }
+            if (e.cancelable) e.preventDefault();
+            drag.prev = drag.last;
+            drag.last = p;
+            if (drag.accept) {
+              // Let the badge follow the finger so the gesture feels connected.
+              var badge = swipeBadge();
+              if (badge) {
+                badge.style.transform =
+                  "translateX(" + Math.max(0, Math.min(40, dx / 2)) + "px)";
+              }
+              return;
+            }
+            var base = drag.open ? -drag.width : 0;
+            var x = Math.max(-drag.width, Math.min(0, base + dx));
+            track.style.transform = "translateX(" + x + "px)";
+          },
+          { passive: false }
+        );
+
+        function endDrag(e, cancelled) {
+          var d = drag;
+          drag = null;
+          if (!d || !d.locked) return;
+          var dx = d.last.x - d.start.x;
+          if (d.accept) {
+            var badge = swipeBadge();
+            if (badge) badge.style.transform = "";
+            if (!cancelled && suggestion && dx >= SWIPE_MIN_PX) {
+              acceptSuggestion();
+              if (navigator.vibrate) navigator.vibrate(10);
+            }
+            return;
+          }
+          track.classList.remove("is-dragging");
+          var dt = d.last.t - d.prev.t;
+          // A finger that paused before lifting isn't flicking.
+          var still = e.timeStamp - d.last.t > 100;
+          var v = dt > 0 && !still ? (d.last.x - d.prev.x) / dt : 0;
+          // Fraction of the way over to the chat page, 0 (post) .. 1 (chat).
+          var progress = Math.max(0, Math.min(1, (d.open ? 1 : 0) - dx / d.width));
+          var toChat = cancelled
+            ? d.open
+            : Math.abs(v) > FLICK_PX_PER_MS
+              ? v < 0
+              : progress > 0.5;
+          if (toChat === d.open) {
+            track.style.transform = ""; // snap back to where it started
+          } else if (toChat) {
+            openChat();
+          } else {
+            closeChat(); // transform is cleared when popstate lands
+          }
+        }
+
+        pager.addEventListener("touchend", function (e) {
+          endDrag(e, false);
+        });
+        pager.addEventListener("touchcancel", function (e) {
+          endDrag(e, true);
+        });
 
         function applyAgentReply(data) {
           var edited = data.action === "edit" && typeof data.text === "string";
@@ -878,7 +1011,7 @@
         var TOUCH = window.matchMedia("(pointer: coarse)").matches;
         if (TOUCH) {
           document.querySelector("#post-hint .hint-keys").textContent =
-            "Swipe right across the text to accept it, left to dismiss.";
+            "Swipe right to accept it.";
         }
 
         function caretAtEnd() {
@@ -1015,55 +1148,7 @@
           }
         });
 
-        var SWIPE_MIN_PX = 60;
-        var swipeStart = null;
-
-        function swipeBadge() {
-          return ghostEl.querySelector("kbd.swipe");
-        }
-
-        post.addEventListener(
-          "touchstart",
-          function (e) {
-            swipeStart =
-              suggestion && e.touches.length === 1
-                ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
-                : null;
-          },
-          { passive: true }
-        );
-
-        post.addEventListener(
-          "touchmove",
-          function (e) {
-            var badge = swipeBadge();
-            if (!swipeStart || !badge) return;
-            // Let the badge follow the finger so the gesture feels connected.
-            var dx = e.touches[0].clientX - swipeStart.x;
-            badge.style.transform =
-              "translateX(" + Math.max(-40, Math.min(40, dx / 2)) + "px)";
-          },
-          { passive: true }
-        );
-
-        post.addEventListener("touchend", function (e) {
-          if (!swipeStart || !suggestion) return;
-          var t = e.changedTouches[0];
-          var dx = t.clientX - swipeStart.x;
-          var dy = t.clientY - swipeStart.y;
-          swipeStart = null;
-          var badge = swipeBadge();
-          if (badge) badge.style.transform = "";
-          // Mostly-horizontal swipes only, so vertical scrolling still works.
-          if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < 2 * Math.abs(dy)) return;
-          e.preventDefault();
-          if (dx > 0) {
-            acceptSuggestion();
-            if (navigator.vibrate) navigator.vibrate(10);
-          } else {
-            clearSuggestion();
-          }
-        });
+        // Swipe right to accept is handled with the page swipes above.
 
         post.addEventListener("mousedown", clearSuggestion);
         post.addEventListener("blur", clearSuggestion);
