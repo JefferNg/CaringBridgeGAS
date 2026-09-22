@@ -254,6 +254,15 @@ def health():
     return info
 
 
+@app.on_event("startup")
+def warm_agent() -> None:
+    """Load the agent while the instance starts, not on the first request."""
+    try:
+        get_agent()
+    except Exception:
+        pass  # /api/health and the first request will report the error.
+
+
 def load_agent_or_500():
     try:
         return get_agent()

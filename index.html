@@ -1081,6 +1081,23 @@
         var API_ROOT = apiBase ? apiBase.replace(/\/$/, "") : "";
         var API_CHAT = API_ROOT + "/api/chat";
         var API_COMPLETE = API_ROOT + "/api/complete";
+        var API_HEALTH = API_ROOT + "/api/health";
+
+        // The backend scales to zero when idle, and waking it can take most
+        // of a minute. Nudge it awake as soon as the page loads (and again
+        // when the chat opens) so it's ready by the time someone asks.
+        var WARM_EVERY_MS = 4 * 60 * 1000;
+        var lastWarm = 0;
+
+        function warmBackend() {
+          if (params.get("mock") === "1") return;
+          var now = Date.now();
+          if (now - lastWarm < WARM_EVERY_MS) return;
+          lastWarm = now;
+          fetch(API_HEALTH, { cache: "no-store" }).catch(function () {});
+        }
+
+        warmBackend();
 
         var IDLE_MS = 30000;
         var post = document.getElementById("post");
@@ -1238,6 +1255,7 @@
         // gesture returns to the post instead of leaving the site.
         function openChat() {
           if (isChatOpen()) return;
+          warmBackend();
           if (IS_MOBILE) history.pushState({ chat: true }, "");
           showChatPage(true);
         }
