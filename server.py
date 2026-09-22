@@ -2,8 +2,14 @@
 Local proxy for the CaringBridge writing assistant.
 
 Uses Application Default Credentials (ADC) — no API keys in the browser.
-Run once:  gcloud auth application-default login
-Then:      uvicorn server:app --reload --port 8000
+Run once:
+  gcloud auth application-default login
+  gcloud auth application-default set-quota-project project-174cfd0e-e490-4232-826
+Then open http://127.0.0.1:8000 (not a separate static file server):
+  uvicorn server:app --reload --port 8000
+
+Without a quota project, Agent Engine often returns FAILED_PRECONDITION
+"Rate exceeded" even when Cloud Run (service-account auth) still works.
 """
 
 from __future__ import annotations
@@ -131,6 +137,7 @@ class ChatResponse(BaseModel):
     session_id: Optional[str] = None
     action: Optional[str] = None
     text: Optional[str] = None
+    suggestions: list[str] = []
 
 
 def build_prompt(user_message: str, draft: str) -> str:
@@ -148,9 +155,11 @@ def build_prompt(user_message: str, draft: str) -> str:
             "User message:",
             user_message,
             "",
-            "Reply with ONLY a single JSON object (no markdown fences):",
-            'If you need more info: {"action":"ask","message":"<question or reply>"}',
-            'If you are ready to edit the post: {"action":"edit","text":"<full updated post>","message":"<brief note to the user>"}',
+            "Reply with ONLY a single JSON object (no markdown fences).",
+            'Always include "suggestions": 2-3 short phrases the user could tap as their next reply',
+            "(natural answers to your message, under ~8 words each).",
+            'If you need more info: {"action":"ask","message":"<question or reply>","suggestions":["...","..."]}',
+            'If you are ready to edit the post: {"action":"edit","text":"<full updated post>","message":"<brief note to the user>","suggestions":["...","..."]}',
         ]
     )
 
@@ -172,8 +181,25 @@ def collect_text(events: list[dict[str, Any]]) -> str:
     return "".join(chunks).strip()
 
 
-def parse_structured(reply: str) -> tuple[str, Optional[str], Optional[str]]:
-    """Return (message, action, edited_text)."""
+def normalize_suggestions(data: dict[str, Any]) -> list[str]:
+    raw = data.get("suggestions")
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for item in raw:
+        if isinstance(item, str):
+            text = item.strip()
+            if text and text not in out:
+                out.append(text)
+        if len(out) >= 3:
+            break
+    return out
+
+
+def parse_structured(
+    reply: str,
+) -> tuple[str, Optional[str], Optional[str], list[str]]:
+    """Return (message, action, edited_text, suggestions)."""
     import json
     import re
 
@@ -193,16 +219,18 @@ def parse_structured(reply: str) -> tuple[str, Optional[str], Optional[str]]:
         if not isinstance(data, dict) or "action" not in data:
             continue
         action = data.get("action")
+        suggestions = normalize_suggestions(data)
         if action == "edit" and isinstance(data.get("text"), str):
             return (
                 str(data.get("message") or "I updated your post in the editor."),
                 "edit",
                 data["text"],
+                suggestions,
             )
         if action == "ask" and data.get("message"):
-            return str(data["message"]), "ask", None
+            return str(data["message"]), "ask", None, suggestions
 
-    return reply, None, None
+    return reply, None, None, []
 
 
 @app.get("/api/health")
@@ -277,14 +305,24 @@ async def chat(body: ChatRequest):
             build_prompt(body.message, body.draft),
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Agent query failed: {exc}") from exc
+        detail = f"Agent query failed: {exc}"
+        if "Rate exceeded" in str(exc):
+            detail += (
+                " Tip for local ADC: run "
+                "`gcloud auth application-default set-quota-project "
+                "project-174cfd0e-e490-4232-826` then retry."
+            )
+        raise HTTPException(status_code=502, detail=detail) from exc
 
-    message, action, edited = parse_structured(raw or "(empty agent reply)")
+    message, action, edited, suggestions = parse_structured(
+        raw or "(empty agent reply)"
+    )
     return ChatResponse(
         reply=message,
         session_id=session_id,
         action=action,
         text=edited,
+        suggestions=suggestions,
     )
 
 
