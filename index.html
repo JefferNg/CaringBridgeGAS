@@ -157,6 +157,35 @@
         vertical-align: 0.15em;
       }
 
+      #post-ghost kbd.swipe {
+        display: inline-block;
+        color: var(--accent);
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        transition: transform 0.1s ease;
+      }
+
+      #post-ghost kbd.swipe .arrow {
+        display: inline-block;
+        animation: swipe-nudge 1.1s ease-in-out 3;
+      }
+
+      @keyframes swipe-nudge {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        50% {
+          transform: translateX(4px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #post-ghost kbd.swipe .arrow {
+          animation: none;
+        }
+      }
+
       .post-hint {
         margin: 0.4rem 0 0;
         font-size: 0.85rem;
@@ -444,7 +473,8 @@
             ></textarea>
           </div>
           <p id="post-hint" class="post-hint">
-            Pause for a few seconds to get a suggestion. Press Tab to accept it, Esc to dismiss.
+            Pause for a few seconds to get a suggestion.
+            <span class="hint-keys">Press Tab to accept it, Esc to dismiss.</span>
           </p>
         </div>
 
@@ -688,6 +718,12 @@
         var completeTimer = null;
         var completeSeq = 0;
         var completeSessionId = null; // kept apart from the chat session
+        // Phones/tablets have no Tab key: swipe right to accept instead.
+        var TOUCH = window.matchMedia("(pointer: coarse)").matches;
+        if (TOUCH) {
+          document.querySelector("#post-hint .hint-keys").textContent =
+            "Swipe right across the text to accept it, left to dismiss.";
+        }
 
         function caretAtEnd() {
           return (
@@ -712,7 +748,12 @@
           span.textContent = suggestion;
           ghostEl.appendChild(span);
           var kbd = document.createElement("kbd");
-          kbd.textContent = "Tab";
+          if (TOUCH) {
+            kbd.className = "swipe";
+            kbd.innerHTML = 'swipe <span class="arrow">\u2192</span>';
+          } else {
+            kbd.textContent = "Tab";
+          }
           ghostEl.appendChild(kbd);
           syncGhostBox();
         }
@@ -814,6 +855,56 @@
             e.preventDefault();
             clearSuggestion();
           } else if (e.key.indexOf("Arrow") === 0 || e.key === "Home" || e.key === "End") {
+            clearSuggestion();
+          }
+        });
+
+        var SWIPE_MIN_PX = 60;
+        var swipeStart = null;
+
+        function swipeBadge() {
+          return ghostEl.querySelector("kbd.swipe");
+        }
+
+        post.addEventListener(
+          "touchstart",
+          function (e) {
+            swipeStart =
+              suggestion && e.touches.length === 1
+                ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+                : null;
+          },
+          { passive: true }
+        );
+
+        post.addEventListener(
+          "touchmove",
+          function (e) {
+            var badge = swipeBadge();
+            if (!swipeStart || !badge) return;
+            // Let the badge follow the finger so the gesture feels connected.
+            var dx = e.touches[0].clientX - swipeStart.x;
+            badge.style.transform =
+              "translateX(" + Math.max(-40, Math.min(40, dx / 2)) + "px)";
+          },
+          { passive: true }
+        );
+
+        post.addEventListener("touchend", function (e) {
+          if (!swipeStart || !suggestion) return;
+          var t = e.changedTouches[0];
+          var dx = t.clientX - swipeStart.x;
+          var dy = t.clientY - swipeStart.y;
+          swipeStart = null;
+          var badge = swipeBadge();
+          if (badge) badge.style.transform = "";
+          // Mostly-horizontal swipes only, so vertical scrolling still works.
+          if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < 2 * Math.abs(dy)) return;
+          e.preventDefault();
+          if (dx > 0) {
+            acceptSuggestion();
+            if (navigator.vibrate) navigator.vibrate(10);
+          } else {
             clearSuggestion();
           }
         });
