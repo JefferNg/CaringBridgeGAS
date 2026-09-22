@@ -413,6 +413,10 @@
         position: fixed;
         right: 1.25rem;
         bottom: 1.25rem;
+        /* Mobile browsers anchor fixed elements to the full-height viewport,
+           which sits behind their bottom toolbar; lift the button by the
+           toolbar's height (100vh - 100dvh) and any home-indicator inset. */
+        bottom: calc(1.25rem + 100vh - 100dvh + env(safe-area-inset-bottom, 0px));
         z-index: 20;
       }
 
@@ -484,6 +488,7 @@
         .chatbot {
           right: 2rem;
           bottom: 2rem;
+          bottom: calc(2rem + 100vh - 100dvh + env(safe-area-inset-bottom, 0px));
         }
       }
     </style>
