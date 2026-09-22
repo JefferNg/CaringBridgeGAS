@@ -454,9 +454,13 @@
 
     <script>
       (function () {
-        // Same-origin for local uvicorn; override for GitHub Pages via
-        // ?api=https://your-backend.example (persisted in localStorage).
+        // Local uvicorn: same-origin. GitHub Pages: Cloud Run proxy (POST
+        // /api/chat is not available on static Pages — that caused HTTP 405).
+        // Override anytime with ?api=https://... (persisted in localStorage).
+        var DEFAULT_PAGES_API =
+          "https://caringbridge-gas-341734686561.us-west1.run.app";
         var params = new URLSearchParams(window.location.search);
+        var onPages = /\.github\.io$/i.test(window.location.hostname);
         var apiBase = window.localStorage.getItem("caringbridge_api_base") || "";
         if (params.has("api")) {
           apiBase = params.get("api") || "";
@@ -465,6 +469,9 @@
           } else {
             window.localStorage.removeItem("caringbridge_api_base");
           }
+        }
+        if (!apiBase && onPages) {
+          apiBase = DEFAULT_PAGES_API;
         }
         var API_CHAT =
           (apiBase ? apiBase.replace(/\/$/, "") : "") + "/api/chat";
