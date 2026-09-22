@@ -33,12 +33,45 @@
       }
 
       body {
+        overflow: hidden;
         font-family: "Source Sans 3", sans-serif;
         color: var(--ink);
         background:
           radial-gradient(ellipse 80% 50% at 10% 0%, #e4f3ee 0%, transparent 55%),
           radial-gradient(ellipse 60% 40% at 100% 100%, #e8f0f5 0%, transparent 50%),
           linear-gradient(165deg, #eef5f2 0%, var(--paper) 45%, #eef2f6 100%);
+      }
+
+      /* Two side-by-side pages (post, chat); opening the chat slides the
+         track left so each page gets the full screen. */
+      .pager {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+        overflow: clip;
+      }
+
+      .pager-track {
+        display: flex;
+        height: 100%;
+        transition: transform 0.38s cubic-bezier(0.22, 0.8, 0.24, 1);
+      }
+
+      body.chat-open .pager-track {
+        transform: translateX(-100%);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .pager-track {
+          transition: none;
+        }
+      }
+
+      .page {
+        flex: 0 0 100%;
+        height: 100%;
+        overflow-y: auto;
+        overscroll-behavior: contain;
       }
 
       .screen {
@@ -48,11 +81,15 @@
         max-width: 720px;
         margin: 0 auto;
         padding: 1.5rem 1.25rem 5.5rem;
-        transition: max-width 0.25s ease;
       }
 
-      body.chat-open .screen {
-        max-width: 1120px;
+      .chat-screen {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 1rem 1.25rem;
       }
 
       .brand {
@@ -71,28 +108,10 @@
         line-height: 1.45;
       }
 
-      .workspace {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1rem;
-        flex: 1;
-        min-height: 0;
-      }
-
-      body.chat-open .workspace {
-        grid-template-columns: 1fr;
-      }
-
-      @media (min-width: 900px) {
-        body.chat-open .workspace {
-          grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
-          align-items: stretch;
-        }
-      }
-
       .editor {
         display: flex;
         flex-direction: column;
+        flex: 1;
         min-height: 0;
       }
 
@@ -206,10 +225,6 @@
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
       }
 
-      body.chat-open #post {
-        min-height: min(55vh, 560px);
-      }
-
       #post::placeholder {
         color: #7a9189;
       }
@@ -220,43 +235,21 @@
       }
 
       .chat-panel {
-        display: none;
+        display: flex;
         flex-direction: column;
-        min-height: min(50vh, 420px);
-        max-height: min(70vh, 640px);
+        flex: 1;
+        min-height: 0;
         border: 1px solid var(--line);
         border-radius: 12px;
         background: var(--panel);
         box-shadow: 0 10px 30px rgba(26, 46, 42, 0.08);
         overflow: hidden;
-        opacity: 0;
-        transform: translateY(8px);
-        transition: opacity 0.22s ease, transform 0.22s ease;
-      }
-
-      body.chat-open .chat-panel {
-        display: flex;
-        opacity: 1;
-        transform: translateY(0);
-        animation: panel-in 0.28s ease both;
-      }
-
-      @keyframes panel-in {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
       }
 
       .chat-header {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
+        gap: 0.5rem;
         padding: 0.85rem 1rem;
         border-bottom: 1px solid var(--line);
         background: linear-gradient(180deg, #f3faf7 0%, transparent 100%);
@@ -275,11 +268,14 @@
         background: transparent;
         color: var(--muted);
         font: inherit;
-        font-size: 1.35rem;
+        font-size: 0.95rem;
+        font-weight: 600;
         line-height: 1;
         cursor: pointer;
-        padding: 0.15rem 0.35rem;
+        padding: 0.45rem 0.6rem;
+        margin-left: -0.4rem;
         border-radius: 6px;
+        white-space: nowrap;
       }
 
       .chat-close:hover {
@@ -447,6 +443,10 @@
           padding: 2.5rem 1.5rem 5.5rem;
         }
 
+        .chat-screen {
+          padding: 2.5rem 1.5rem;
+        }
+
         .chatbot {
           right: 2rem;
           bottom: 2rem;
@@ -455,59 +455,66 @@
     </style>
   </head>
   <body>
-    <main class="screen">
-      <h1 class="brand">CaringBridge</h1>
-      <p class="lede">Write an update for the people who care about you.</p>
+    <div class="pager">
+      <div class="pager-track">
+        <main class="page" id="page-write">
+          <div class="screen">
+            <h1 class="brand">CaringBridge</h1>
+            <p class="lede">Write an update for the people who care about you.</p>
 
-      <div class="workspace">
-        <div class="editor">
-          <label class="sr-only" for="post">Post body</label>
-          <div class="post-wrap">
-            <div id="post-ghost" aria-hidden="true"></div>
-            <textarea
-              id="post"
-              name="post"
-              placeholder="Share how it today went, what you need, or a small moment that mattered…"
-              aria-describedby="post-hint"
-              autofocus
-            ></textarea>
+            <div class="editor">
+              <label class="sr-only" for="post">Post body</label>
+              <div class="post-wrap">
+                <div id="post-ghost" aria-hidden="true"></div>
+                <textarea
+                  id="post"
+                  name="post"
+                  placeholder="Share how it today went, what you need, or a small moment that mattered…"
+                  aria-describedby="post-hint"
+                  autofocus
+                ></textarea>
+              </div>
+              <p id="post-hint" class="post-hint">
+                Pause for a few seconds to get a suggestion.
+                <span class="hint-keys">Press Tab to accept it, Esc to dismiss.</span>
+              </p>
+            </div>
           </div>
-          <p id="post-hint" class="post-hint">
-            Pause for a few seconds to get a suggestion.
-            <span class="hint-keys">Press Tab to accept it, Esc to dismiss.</span>
-          </p>
-        </div>
+        </main>
 
-        <aside
-          id="chat-panel"
-          class="chat-panel"
-          aria-label="Writing assistant"
-          hidden
-        >
-          <div class="chat-header">
-            <h2>Writing assistant</h2>
-            <button
-              type="button"
-              class="chat-close"
-              id="chat-close"
-              aria-label="Close assistant"
+        <section class="page" id="page-chat" inert>
+          <div class="chat-screen">
+            <aside
+              id="chat-panel"
+              class="chat-panel"
+              aria-label="Writing assistant"
             >
-              ×
-            </button>
+              <div class="chat-header">
+                <button
+                  type="button"
+                  class="chat-close"
+                  id="chat-close"
+                  aria-label="Back to your post"
+                >
+                  ← Your post
+                </button>
+                <h2>Writing assistant</h2>
+              </div>
+              <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
+              <form id="chat-form" class="chat-compose">
+                <label class="sr-only" for="chat-input">Message</label>
+                <textarea
+                  id="chat-input"
+                  rows="1"
+                  placeholder="Ask for help with your post…"
+                ></textarea>
+                <button type="submit" class="chat-send" id="chat-send">Send</button>
+              </form>
+            </aside>
           </div>
-          <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
-          <form id="chat-form" class="chat-compose">
-            <label class="sr-only" for="chat-input">Message</label>
-            <textarea
-              id="chat-input"
-              rows="1"
-              placeholder="Ask for help with your post…"
-            ></textarea>
-            <button type="submit" class="chat-send" id="chat-send">Send</button>
-          </form>
-        </aside>
+        </section>
       </div>
-    </main>
+    </div>
 
     <div class="chatbot">
       <div
@@ -569,12 +576,13 @@
         var post = document.getElementById("post");
         var nudge = document.getElementById("chatbot-nudge");
         var fab = document.getElementById("chatbot-fab");
-        var panel = document.getElementById("chat-panel");
         var messagesEl = document.getElementById("chat-messages");
         var form = document.getElementById("chat-form");
         var input = document.getElementById("chat-input");
         var sendBtn = document.getElementById("chat-send");
         var closeBtn = document.getElementById("chat-close");
+        var pageWrite = document.getElementById("page-write");
+        var pageChat = document.getElementById("page-chat");
 
         var idleTimer = null;
         var sessionId = null;
@@ -609,27 +617,62 @@
           return el;
         }
 
-        function openChat() {
-          document.body.classList.add("chat-open");
-          panel.hidden = false;
-          hideNudge();
-          clearTimeout(idleTimer);
-          if (!started) {
-            started = true;
-            addBubble("assistant", "What can I help you with?");
+        function isChatOpen() {
+          return document.body.classList.contains("chat-open");
+        }
+
+        // Only the visible page is focusable, so Tab can't wander off-screen.
+        function showChatPage(open) {
+          document.body.classList.toggle("chat-open", open);
+          pageChat.inert = !open;
+          pageWrite.inert = open;
+          if (open) {
+            hideNudge();
+            clearTimeout(idleTimer);
+            if (!started) {
+              started = true;
+              addBubble("assistant", "What can I help you with?");
+            }
+            // preventScroll keeps the browser from jumping the pager mid-slide.
+            // Skip on touch so the keyboard doesn't cover the chat as it opens.
+            if (!window.matchMedia("(pointer: coarse)").matches) {
+              input.focus({ preventScroll: true });
+            }
+          } else {
+            resetIdleTimer();
+            fab.focus({ preventScroll: true });
           }
-          input.focus();
+        }
+
+        // The chat page is a history entry, so the browser / phone back
+        // gesture returns to the post instead of leaving the site.
+        function openChat() {
+          if (isChatOpen()) return;
+          history.pushState({ chat: true }, "");
+          showChatPage(true);
         }
 
         function closeChat() {
-          document.body.classList.remove("chat-open");
-          panel.hidden = true;
-          resetIdleTimer();
-          fab.focus();
+          if (!isChatOpen()) return;
+          if (history.state && history.state.chat) {
+            history.back(); // popstate does the rest
+          } else {
+            showChatPage(false);
+          }
+        }
+
+        window.addEventListener("popstate", function (e) {
+          showChatPage(!!(e.state && e.state.chat));
+        });
+
+        // A reload while on the chat page starts back on the post.
+        if (history.state && history.state.chat) {
+          history.replaceState(null, "");
         }
 
         function applyAgentReply(data) {
-          if (data.action === "edit" && typeof data.text === "string") {
+          var edited = data.action === "edit" && typeof data.text === "string";
+          if (edited) {
             post.value = data.text;
             post.dispatchEvent(new Event("input", { bubbles: true }));
           }
@@ -637,6 +680,8 @@
             "assistant",
             data.reply || "Sorry — I didn't get a usable reply."
           );
+          // The post is on the other page now, so say it changed.
+          if (edited) addBubble("system", "Your post was updated.");
         }
 
         async function askAgent(userText) {
@@ -693,6 +738,9 @@
 
         fab.addEventListener("click", openChat);
         closeBtn.addEventListener("click", closeChat);
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && isChatOpen()) closeChat();
+        });
 
         form.addEventListener("submit", function (e) {
           e.preventDefault();
