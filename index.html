@@ -1127,10 +1127,12 @@
           "Help me say thank you",
           "Help me get started",
         ];
+        // Only used if the agent omits suggestions. Prefer open replies over
+        // confirmations — confirmations misfire when the assistant asked a question.
         var FALLBACK_ASK = [
-          "Yes, that sounds right",
-          "Not quite — here's more",
-          "Just edit the draft",
+          "I'd like to type my answer",
+          "Can you give an example?",
+          "Skip this for now",
         ];
         var FALLBACK_EDIT = [
           "Looks good",
@@ -1400,9 +1402,8 @@
         });
 
         // ---- The writer stays in control of their post ----
-        // The helper never rewrites the post by itself: an edit arrives as a
-        // preview the writer can use or decline, and a used edit can be undone
-        // until they start typing again.
+        // An edit is applied to the textarea right away so it matches what the
+        // helper said it changed, and can be undone until they start typing.
         var postWrap = post.parentElement;
         var undoBar = document.getElementById("undo-bar");
         var undoBtn = document.getElementById("undo-edit");
@@ -1457,11 +1458,11 @@
           var card = document.createElement("div");
           card.className = "proposal";
           card.setAttribute("role", "group");
-          card.setAttribute("aria-label", "Suggested version of your post");
+          card.setAttribute("aria-label", "Updated version of your post");
 
           var label = document.createElement("p");
           label.className = "proposal-label";
-          label.textContent = "Suggested version of your post";
+          label.textContent = "Updated version of your post";
           var body = document.createElement("p");
           body.className = "proposal-text";
           body.textContent = text;
@@ -1489,7 +1490,9 @@
             useProposal(text, card);
           });
           keep.addEventListener("click", function () {
-            decideProposal(card, "Kept your version.", false);
+            // Revert if this edit is still the one sitting in the textarea.
+            if (undoState && undoState.card === card) undoEdit();
+            else decideProposal(card, "Kept your version.", false);
           });
           undo.addEventListener("click", undoEdit);
 
@@ -1497,6 +1500,7 @@
           card.append(label, body, actions);
           messagesEl.appendChild(card);
           messagesEl.scrollTop = messagesEl.scrollHeight;
+          return card;
         }
 
         undoBtn.addEventListener("click", undoEdit);
@@ -1512,7 +1516,7 @@
             "assistant",
             data.reply || "Sorry, I didn't quite catch that. Could you try again?"
           );
-          if (edited) addProposal(data.text);
+          if (edited) useProposal(data.text, addProposal(data.text));
           showSuggestions(suggestionsForReply(data));
         }
 
